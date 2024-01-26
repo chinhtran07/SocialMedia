@@ -21,7 +21,15 @@ class SocialNetworkAppAdminSite(admin.AdminSite):
         ] + super().get_urls()
 
     def stats_view(self, request):
-        return TemplateResponse(request, 'admin/stats.html')
+        type_statistic = request.GET.get('type')
+        period = request.GET.get('period')
+        year = request.GET.get('year')
+        period = period if period is not None else 'year'
+        if type_statistic == 'users':
+            stats = dao.count_users_by_time_period(period, year)
+        else:
+            stats = dao.count_posts_by_time_period(period, year)
+        return TemplateResponse(request, 'admin/stats.html', {'stats': stats})
 
 
 admin_site = SocialNetworkAppAdminSite(name='myapp')
@@ -37,7 +45,14 @@ def reset_password_change_time(modeladmin, request, queryset):
         user.save()
 
 
+def confirm_student(modeladmin, request, queryset):
+    for user in queryset:
+        user.is_active = True
+        user.save()
+
+
 reset_password_change_time.short_description = "Reset Password Change Time"
+confirm_student.short_description = "Confirm student"
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -45,7 +60,7 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ['username']
     list_filter = ['username', 'first_name', 'role']
     inlines = [AlumniProfileInlineAdmin, ]
-    actions = [reset_password_change_time]
+    actions = [reset_password_change_time, confirm_student]
 
 
 class PostForm(forms.ModelForm):

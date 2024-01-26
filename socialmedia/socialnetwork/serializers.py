@@ -21,6 +21,8 @@ class UserSerializer(serializers.ModelSerializer):
 
         user = User(**data)
         user.set_password(data['password'])
+        # student is not confirmed
+        user.is_active = False
         user.save()
 
         return user
@@ -112,7 +114,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
-    recipients_users = UserSerializer(many=True, read_only=True)
+    recipients_users = UserDetailSerializer(many=True, read_only=True)
     recipients_groups = GroupSerializer(many=True, read_only=True)
 
     class Meta:

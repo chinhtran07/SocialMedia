@@ -36,7 +36,7 @@ def count_users_by_time_period(period='year', year=None):
             period: getattr(ExtractMonth('date_joined'), 'as_' + period)})
         .values(grouping_field)
         .order_by(grouping_field)
-        .annotate(user_count=Count('id'))
+        .annotate(count=Count('id'))
     )
 
     return user_creation_count

@@ -1,0 +1,24 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+nav {
+  background-color: #f0f0f0;
+  padding: 10px;
+}
+nav div {
+  display: inline;
+  margin-right: 10px;
+  text-decoration: none;
+  font-weight: bold;
+}
+.statistic {
+  text-decoration: none;
+}
+.statistic:hover {
+  border-bottom: 2px solid blue;
+}
+#yearInput {
+  display: none;
+}

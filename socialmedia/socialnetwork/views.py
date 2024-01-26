@@ -1,3 +1,5 @@
+from django.db.models import Count
+from django.db.models.functions import Trunc
 from django.shortcuts import render
 
 # Create your views here.
@@ -349,16 +351,3 @@ class InvitationViewSet(viewsets.ViewSet,
     serializer_class = serializers.InvitationSerializer
     permission_classes = [permissions.IsAdminUser]
 
-
-# def statistics_data(request):
-#     user_statistics = User.objects.filter(date_joined__isnull=False).values('date_joined__year',
-#                                                                             'date_joined__month').annotate(
-#         count=models.Count('id'))
-#     post_statistics = Post.objects.filter(created_date__isnull=False).values('created_date__year',
-#                                                                              'created_date__month').annotate(
-#         count=models.Count('id'))
-#
-#     user_data = {'label': 'Users', 'data': user_statistics}
-#     post_data = {'label': 'Posts', 'data': post_statistics}
-#
-#     return JsonResponse({'users': user_data, 'posts': post_data})

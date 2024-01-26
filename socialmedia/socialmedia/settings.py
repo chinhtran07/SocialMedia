@@ -54,10 +54,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
- 'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'oauth2_provider.middleware.OAuth2TokenMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-#    'socialnetwork.middleware.PasswordChangeLecturerMiddleware',
+    'socialnetwork.middleware.PasswordChangeLecturerMiddleware',
 ]
 
 ROOT_URLCONF = 'socialmedia.urls'
@@ -86,7 +86,6 @@ WSGI_APPLICATION = 'socialmedia.wsgi.application'
 import pymysql
 
 pymysql.install_as_MySQLdb()
-
 
 DATABASES = {
     'default': {
