@@ -19,7 +19,6 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         if self.role == 'lecturer':
             self.set_password(settings.PASSWORD_LECTURER_DEFAULT)
-        self.set_password(self.password)
         super().save()
 
 

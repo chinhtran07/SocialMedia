@@ -33,7 +33,7 @@ def count_users_by_time_period(period='year', year=None):
     user_creation_count = (
         User.objects.filter(filter_condition)
         .annotate(**{period: ExtractYear('date_joined')} if period == 'year' else {
-            period: getattr(ExtractMonth('date_joined'), 'as_' + period)})
+            period: ExtractMonth('date_joined')})
         .values(grouping_field)
         .order_by(grouping_field)
         .annotate(count=Count('id'))
@@ -60,7 +60,7 @@ def count_posts_by_time_period(period='year', year=None):
     # Annotate the User model with the selected period and year
     post_creation_count = (
         Post.objects.filter(filter_condition)
-        .annotate(**{period: ExtractYear('created_date')} if period == 'year'else {period: getattr(ExtractMonth('created_date'), 'as_' + period)})
+        .annotate(**{period: ExtractYear('created_date')} if period == 'year'else {period: ExtractMonth('created_date')})
         .values(grouping_field)
         .order_by(grouping_field)
         .annotate(user_count=Count('id'))
