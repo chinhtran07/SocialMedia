@@ -8,10 +8,11 @@ from django.db import models
 
 
 class User(AbstractUser):
-    USER_TYPES = [('alumni', 'Alumni'),
-                  ('lecturer', 'Lecturer'),
-                  ('admin', 'Admin')]
-    role = models.CharField(max_length=20, choices=USER_TYPES, default='alumni')
+    class Role(models.IntegerChoices):
+        ALUMNI = 1, "Alumni"
+        LECTURER = 2, "Lecturer"
+        ADMIN = 3, "Admin"
+    role = models.IntegerField(choices=Role, default=Role.ALUMNI)
     avatar = CloudinaryField('avatar', null=True)
     cover_image = CloudinaryField('cover_image', null=True)
     password_changed = models.BooleanField(default=False)
@@ -105,20 +106,16 @@ class Comment(Interaction):
 
 
 class Reaction(Interaction):
-    LIKE = 'like'
-    LOVE = 'love'
-    HAHA = 'haha'
+    class ReactionTypes(models.IntegerChoices):
+        LIKE = 1, "Like"
+        HAHA = 2, "Haha"
+        LOVE = 3, "Love"
 
-    REACTION_TYPES = [
-        (LIKE, 'Like'),
-        (LOVE, 'Love'),
-        (HAHA, 'Haha'),
-    ]
     active = models.BooleanField(default=True)
-    type = models.CharField(max_length=10, choices=REACTION_TYPES, null=True)
+    type = models.IntegerField(choices=ReactionTypes, null=True)
 
     def __str__(self):
-        return self.type
+         return self.type.name
 
     class Meta:
         unique_together = ('user', 'post')

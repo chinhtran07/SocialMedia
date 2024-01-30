@@ -1,16 +1,14 @@
-from django.db.models import Count
-from django.db.models.functions import Trunc
-from django.shortcuts import render
 
 # Create your views here.
 import json
 import pdb
 import random
+from itertools import chain
 
 from django.contrib.auth import authenticate
 from django.conf import settings
 from django.db import IntegrityError
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
 from oauth2_provider.views import TokenView
@@ -29,10 +27,9 @@ class LoginView(TokenView):
     def post(self, request, *args, **kwargs):
         username = request.POST.get('username')
         password = request.POST.get('password')
-        role = request.POST.get('role')
-
+        role = int(request.POST.get('role'))
+        #pdb.set_trace()
         user = authenticate(username=username, password=password)
-
         if user and user.role == role:
             request.POST = request.POST.copy()
 
@@ -58,10 +55,10 @@ class UserViewSet(viewsets.ViewSet,
     queryset = User.objects.filter(is_active=True).all()
     serializer_class = serializers.UserSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FileUploadParser]
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated()]
 
     def get_permissions(self):
-        if self.action in ['change_password', 'destroy', 'list_friends']:
+        if self.action in ['change_password', 'destroy', 'list_friends', "add_posts"]:
             return [perms.IsOwner()]
         if self.action.__eq__('create'):
             return [permissions.AllowAny()]
@@ -140,22 +137,22 @@ class UserViewSet(viewsets.ViewSet,
 
     @action(methods=['post'], detail=True, url_path='add_friend')
     def add_friend(self, request, pk):
-        friend_request = self.create_friend_request(sender=self.get_object(), receiver=request.data.get('receiver'))
+        friend_request = self.create_friend_request(sender=request.user, receiver=self.get_object())
         return Response(serializers.FriendShipSerializer(friend_request).data, status=status.HTTP_201_CREATED)
 
-    @action(methods=['GET'], detail=False, url_path='search_friends')
+    @action(methods=['GET'], detail=False, url_path='search')
     def search(self, request):
-        users = dao.search_people(request.query_params.get("name"))
+        users = dao.search_people(params=request.GET)
 
         return Response(serializers.UserSerializer(users, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_path='list_friends')
     def list_friends(self, request):
-        sender = self.get_object().friendship_requests_sent.filter(is_accepted=True).all()
-        receiver = self.get_object().friendship_requests_received.filter(is_accepted=True).all()
+        sender = request.user.friendship_requests_sent.filter(is_accepted=True).all()
+        receiver = request.user.friendship_requests_received.filter(is_accepted=True).all()
 
-        friends = sender + receiver
+        friends = list(chain(sender, receiver))
 
         return Response(serializers.FriendShipSerializer(friends, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
@@ -176,9 +173,20 @@ class FriendShipViewSet(viewsets.ViewSet,
     serializer_class = serializers.FriendShipSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        user_id = self.request.query_params.get('userId')
-        return self.queryset.filter(receiver_id=user_id)
+    def list(self, request, *args, **kwargs):
+        q = request.user.friendship_requests_received.all()
+
+        return Response(serializers.FriendShipSerializer(q, many=True, context={'request': request}).data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Update is_accepted to True
+        instance.is_accepted = True
+        instance.save()
+
+        return Response(status=status.HTTP_202_ACCEPTED)
 
 
 class PostViewSet(viewsets.ViewSet,
@@ -187,26 +195,20 @@ class PostViewSet(viewsets.ViewSet,
                   generics.RetrieveAPIView,
                   generics.DestroyAPIView):
     queryset = Post.objects.filter(active=True).all()
-    serializer_class = serializers.PostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = serializers.PostDetailSerializer
+    permission_classes = [permissions.IsAuthenticated()]
     pagination_class = paginators.PostPaginator
 
     def get_permissions(self):
         if self.action in ['update', 'block_comments_post']:
-            return [perms.IsOwner]
+            return [perms.IsOwner()]
         if self.action.__eq__('destroy'):
-            return [perms.IsOwner, permissions.IsAdminUser]
+            return [perms.IsOwner(), permissions.IsAdminUser()]
 
         return self.permission_classes
 
-    def get_queryset(self):
-        posts = self.queryset
-        MAX_RANDOM_POSTS = 10
-        random_posts = random.sample(list(posts), min(len(posts), MAX_RANDOM_POSTS))
-        return random_posts
-
     def list(self, request, *args, **kwargs):
-        user_id = self.request.query_params.get('userId')
+        user_id = request.GET.get('userId')
         user = User.objects.get(id=user_id)
         if user is not None:
             posts = user.post_set.filter(active=True).order_by('-created_date').all()
@@ -215,6 +217,13 @@ class PostViewSet(viewsets.ViewSet,
 
         return super().list(request, *args, **kwargs)
 
+    @action(methods=['get'], detail=False, url_path="list-random-posts")
+    def list_random_posts(self, request):
+        posts = self.queryset
+        MAX_RANDOM_POSTS = 10
+        random_posts = random.sample(list(posts), min(len(posts), MAX_RANDOM_POSTS))
+        return Response(self.serializer_class(random_posts, many=True).data, status=status.HTTP_200_OK)
+
     @action(methods=['post'], detail=True, url_path='comments')
     def add_comments(self, request, pk):
         c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
@@ -222,32 +231,31 @@ class PostViewSet(viewsets.ViewSet,
         return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
 
     @action(methods=['post'], detail=True, url_path='reacts')
-    def react_posts(self, request):
+    def react_posts(self, request, pk):
+        type = int(request.data.get('type'))
         reaction, created = Reaction.objects.get_or_create(user=request.user, post=self.get_object(),
-                                                           type=request.data.get('type'))
+                                                           type=type)
         if not created:
             reaction.active = not reaction.active
             reaction.save()
-
-        return Response(serializers.PostDetailSerializer(self.get_object(), context={'request': request}),
-                        status=status.HTTP_204_NO_CONTENT)
+        post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
+        return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
 
     @action(methods=['get'], detail=True)
     def list_comments(self, request, pk):
-        comments = self.get_object().post_set.filter(active=True).all()
+        comments = self.get_object().comment_set.filter(active=True)
 
         return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
 
     @action(methods=['get'], detail=True)
     def list_reactions(self, request, pk):
-        reactions = self.get_object().post_set.filter(active=True).all()
-
+        reactions = self.get_object().reaction_set.filter(active=True)
         return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True, url_path='block_comment')
-    def block_comments_post(self, request):
+    def block_comments_post(self, request, pk):
         post = self.get_object()
         post.comment_blocked = not post.comment_blocked
         post.save()
@@ -259,7 +267,7 @@ class PostViewSet(viewsets.ViewSet,
         post_shared = Post.objects.create(user=request.user, content=request.data.get('content'),
                                           shared_post=self.get_object())
 
-        return Response(serializers.PostSerializer(post_shared).data, status=status.HTTP_201_CREATED)
+        return Response(self.serializer_class(post_shared).data, status=status.HTTP_201_CREATED)
 
 
 class CommentViewSet(viewsets.ViewSet,
@@ -350,4 +358,5 @@ class InvitationViewSet(viewsets.ViewSet,
     queryset = Invitation.objects.filter(active=True).all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = [permissions.IsAdminUser]
+
 

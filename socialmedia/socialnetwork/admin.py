@@ -57,10 +57,14 @@ class AlumniProfileInlineAdmin(admin.StackedInline):
     model = AlumniProfile
 
 
+class AlumniAdmin(admin.ModelAdmin):
+    search_fields = ['student_id']
+
+
 class UserAdmin(admin.ModelAdmin):
     list_display = ['id', 'username', 'email', 'role', 'is_active']
     search_fields = ['username']
-    list_filter = ['username', 'first_name', 'role']
+    list_filter = ['role', 'username', 'first_name',]
     inlines = [AlumniProfileInlineAdmin, ]
     actions = [reset_password_change_time, confirm_student]
 
@@ -74,7 +78,7 @@ class PostForm(forms.ModelForm):
 
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['user', 'created_date', 'active']
+    list_display = ['id', 'user', 'created_date', 'active']
     form = PostForm
 
 
@@ -83,3 +87,5 @@ class GroupAdmin(admin.ModelAdmin):
 
 
 admin_site.register(User, UserAdmin)
+admin_site.register(AlumniProfile, AlumniAdmin)
+admin_site.register(Post, PostAdmin)

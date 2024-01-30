@@ -29,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserDetailSerializer(UserSerializer):
+    avatar = serializers.ImageField()
     cover_image = serializers.ImageField()
 
     class Meta:
@@ -68,10 +69,11 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'comment_blocked', 'created_date', 'updated_date', 'user']
+        fields = ['id', 'content', 'comment_blocked', 'created_date', 'updated_date', 'user', 'shared_post']
 
 
 class PostDetailSerializer(PostSerializer):
+    reacted = serializers.SerializerMethodField()
 
     def get_reacted(self, post):
         request = self.context.get('request')
@@ -98,11 +100,10 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class SurveySerializer(serializers.ModelSerializer):
-    questions = QuestionSerializer(many=True)
 
     class Meta:
         model = Survey
-        fields = '__all__'
+        fields = ['content',]
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -123,7 +124,7 @@ class InvitationSerializer(serializers.ModelSerializer):
 
 
 class ReactionSerializer(serializers.ModelSerializer):
-    User = UserDetailSerializer()
+    user = UserDetailSerializer()
 
     class Meta:
         model = Reaction

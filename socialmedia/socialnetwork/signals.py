@@ -10,7 +10,7 @@ from .models import User, Invitation
 
 @receiver(post_save, sender=User)
 def send_email_to_lecturer(sender, instance, created, **kwargs):
-    if created and instance.role == 'lecturer':
+    if created and instance.role == instance.Role.LECTURER:
         subject = 'Account Information'
         message = f'Chào thầy/cô {instance.get_full_name()},'
         f'\n\nTài khoản thầy cô đã được tạo.\nTài khoản: {instance.username}'
@@ -21,7 +21,7 @@ def send_email_to_lecturer(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Invitation)
-def send_email_to_lecturer(sender, instance, created, **kwargs):
+def send_email_invitation(sender, instance, created, **kwargs):
     if created:
         subject = 'THƯ MỜI SỰ KIỆN'
         message = f'Chào các bạn,'
@@ -38,3 +38,13 @@ def send_email_to_lecturer(sender, instance, created, **kwargs):
                 recipient_list.append(user.email)
 
         send_mail(subject, message, from_email, recipient_list, fail_silently)
+
+
+@receiver(post_save, sender=User)
+def send_mail_confirmation(sender, instance, **kwargs):
+    if instance.role == instance.Role.ALUMNI and instance.is_active:
+        subject = 'Account Confirmation'
+        message = f'Chào bạn {instance.get_full_name()},'
+        f'\n\nTài khoản bạn đã được xác nhận.'
+        from_email = settings.EMAIL_HOST_USER
+        instance.email_user(subject, message, from_email)

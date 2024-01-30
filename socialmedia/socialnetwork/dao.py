@@ -1,15 +1,18 @@
-from django.db.models import Count, Q
-from django.db.models.functions import ExtractMonth, ExtractYear, ExtractQuarter
+import pdb
+
+from django.db.models import Count, Q, Value, CharField
+from django.db.models.functions import ExtractMonth, ExtractYear, ExtractQuarter, Concat
 
 from .models import User, Post
 
 
 def search_people(params={}):
-    q = User.objects.filter(active=True)
-
-    name = params.get('name')
+    q = User.objects.filter(is_active=True)
+    name = params.get("name")
     if name:
-        q = q.filter(get_full_name__icontains=name)
+        q = q.annotate(
+            full_name=Concat('first_name', Value(' '), 'last_name', output_field=CharField())
+        ).filter(full_name__icontains=name)
 
     return q.all()
 
