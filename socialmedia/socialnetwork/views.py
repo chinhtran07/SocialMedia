@@ -1,4 +1,3 @@
-
 # Create your views here.
 import json
 import pdb
@@ -28,7 +27,7 @@ class LoginView(TokenView):
         username = request.POST.get('username')
         password = request.POST.get('password')
         role = int(request.POST.get('role'))
-        #pdb.set_trace()
+        # pdb.set_trace()
         user = authenticate(username=username, password=password)
         if user and user.role == role:
             request.POST = request.POST.copy()
@@ -38,13 +37,8 @@ class LoginView(TokenView):
             request.POST['client_id'] = settings.CLIENT_ID
             request.POST['client_secret'] = settings.CLIENT_SECRET
 
-            # Convert bytes to json
-            response = super().post(request)
-            data = response.content.decode('utf-8')
-            headers = json.loads(data)
-
-            return HttpResponse(content="", headers=headers, status=response.status_code)
-        return HttpResponse({'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            return super().post(request)
+        return HttpResponse(content="Khong tim thay tai khoan", status=status.HTTP_401_UNAUTHORIZED)
 
 
 class UserViewSet(viewsets.ViewSet,
@@ -176,7 +170,8 @@ class FriendShipViewSet(viewsets.ViewSet,
     def list(self, request, *args, **kwargs):
         q = request.user.friendship_requests_received.all()
 
-        return Response(serializers.FriendShipSerializer(q, many=True, context={'request': request}).data, status=status.HTTP_200_OK)
+        return Response(serializers.FriendShipSerializer(q, many=True, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -358,5 +353,3 @@ class InvitationViewSet(viewsets.ViewSet,
     queryset = Invitation.objects.filter(active=True).all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = [permissions.IsAdminUser]
-
-
