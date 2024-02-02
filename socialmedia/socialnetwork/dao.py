@@ -46,12 +46,10 @@ def count_users_by_time_period(period='year', year=None):
 
 
 def count_posts_by_time_period(period='year', year=None):
-    # Validating the period parameter
     valid_periods = ['year', 'month', 'quarter']
     if period not in valid_periods:
         raise ValueError(f"Invalid period: {period}. Valid periods are {valid_periods}.")
 
-    # Define the annotation and grouping field based on the period
     annotation_field = f"{period}__date_joined"
     grouping_field = f"{period}"
 
@@ -60,13 +58,19 @@ def count_posts_by_time_period(period='year', year=None):
     if year:
         filter_condition &= Q(date_joined__year=year)
 
-    # Annotate the User model with the selected period and year
+    if period == 'year':
+        annotation = ExtractYear('created_date')
+    elif period == 'month':
+        annotation = ExtractMonth('created_date')
+    elif period == 'quarter':
+        annotation = ExtractQuarter('created_date')
+
     post_creation_count = (
         Post.objects.filter(filter_condition)
-        .annotate(**{period: ExtractYear('created_date')} if period == 'year'else {period: ExtractMonth('created_date')})
+        .annotate(**{period: annotation})
         .values(grouping_field)
         .order_by(grouping_field)
-        .annotate(user_count=Count('id'))
+        .annotate(count=Count('id'))
     )
 
     return post_creation_count

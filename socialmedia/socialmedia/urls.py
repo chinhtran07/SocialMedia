@@ -37,7 +37,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin_site.urls),
-    path('', include('socialnetwork.urls')),
+    path('api/', include('socialnetwork.urls')),
     path('__debug__/', include('debug_toolbar.urls')),
     re_path(r'^swagger(?P<format>\.json|\.yaml)$',
             schema_view.without_ui(cache_timeout=0),
