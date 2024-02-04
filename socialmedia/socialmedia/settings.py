@@ -155,7 +155,7 @@ INTERNAL_IPS = [
 ]
 
 OAUTH2_PROVIDER = {
-    # 'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
+    'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
 }
 
 REST_FRAMEWORK = {
@@ -166,6 +166,11 @@ REST_FRAMEWORK = {
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
+
+CORS_ORIGIN_WHITELIST = (
+    'http://localhost:8081',
+    'exp://192.168.1.6:8081'
+)
 
 import environ
 

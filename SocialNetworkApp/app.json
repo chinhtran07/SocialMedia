@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "SocialNetworkApp",
+    "slug": "SocialNetworkApp",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "SocialNetworkApp"
+}

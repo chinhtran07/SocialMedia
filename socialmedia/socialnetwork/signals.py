@@ -44,7 +44,6 @@ def send_email_invitation(sender, instance, created, **kwargs):
 def send_mail_confirmation(sender, instance, **kwargs):
     if instance.role == instance.Role.ALUMNI and instance.is_active:
         subject = 'Account Confirmation'
-        message = f'Chào bạn {instance.get_full_name()},'
-        f'\n\nTài khoản bạn đã được xác nhận.'
+        message = f'Chào bạn {instance.get_full_name()} \n\nTài khoản bạn đã được xác nhận.'
         from_email = settings.EMAIL_HOST_USER
         instance.email_user(subject, message, from_email)

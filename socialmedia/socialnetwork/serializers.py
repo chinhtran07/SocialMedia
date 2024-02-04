@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import User, AlumniProfile, Post, Comment, FriendShip, Group, Question, Survey, \
-    Invitation, Answer, Reaction
+    Invitation, Reaction
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,27 +28,30 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserDetailSerializer(UserSerializer):
+class UserUpdateDetailSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField()
     cover_image = serializers.ImageField()
 
     class Meta:
-        model = UserSerializer.Meta.model
-        fields = ['first_name', 'last_name', 'email', 'avatar', 'cover_image', 'role']
-        extra_kwargs = {
-            'role': {
-                'read_only': True
-            }
-        }
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'avatar', 'cover_image']
+
+
+class UserInteractionSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'avatar']
 
 
 class FriendShipSerializer(serializers.ModelSerializer):
-    sender = UserDetailSerializer()
-    receiver = UserDetailSerializer()
+    sender = UserInteractionSerializer()
+    receiver = UserInteractionSerializer()
 
     class Meta:
         model = FriendShip
-        fields = ['id', 'sender', 'receiver']
+        fields = ['id', 'sender', 'receiver', 'is_accepted']
 
 
 class AlumniSerializer(serializers.ModelSerializer):
@@ -65,7 +68,7 @@ class AlumniSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    user = UserDetailSerializer()
+    user = UserInteractionSerializer()
 
     class Meta:
         model = Post
@@ -86,7 +89,7 @@ class PostDetailSerializer(PostSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserDetailSerializer()
+    user = UserInteractionSerializer()
 
     class Meta:
         model = Comment
@@ -107,7 +110,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
-    members = UserDetailSerializer(many=True, read_only=True)
+    members = UserInteractionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Group
@@ -115,7 +118,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
-    recipients_users = UserDetailSerializer(many=True, read_only=True)
+    recipients_users = UserInteractionSerializer(many=True, read_only=True)
     recipients_groups = GroupSerializer(many=True, read_only=True)
 
     class Meta:
@@ -124,8 +127,17 @@ class InvitationSerializer(serializers.ModelSerializer):
 
 
 class ReactionSerializer(serializers.ModelSerializer):
-    user = UserDetailSerializer()
+    user = UserInteractionSerializer()
 
     class Meta:
         model = Reaction
         fields = '__all__'
+
+
+class PasswordSerializer(serializers.ModelSerializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    class Meta:
+        fields = '__all__'
+

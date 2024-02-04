@@ -42,6 +42,7 @@ class LoginView(TokenView):
 
 
 class UserViewSet(viewsets.ViewSet,
+                  generics.UpdateAPIView,
                   generics.CreateAPIView,
                   generics.DestroyAPIView,
                   generics.RetrieveAPIView,
@@ -84,25 +85,32 @@ class UserViewSet(viewsets.ViewSet,
             return Response(serializers.AlumniSerializer(alumni_profile).data, status=status.HTTP_201_CREATED)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = serializers.UserUpdateDetailSerializer(instance, data=request.data, partial=partial)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def retrieve(self, request, *args, **kwargs):
-        return Response(serializers.UserDetailSerializer(self.get_object()).data, status=status.HTTP_200_OK)
+        return Response(serializers.UserUpdateDetailSerializer(self.get_object()).data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path='current-user', url_name='current-user', detail=False)
     def current_user(self, request):
-        return Response(serializers.UserDetailSerializer(request.user).data, status=status.HTTP_200_OK)
+        return Response(serializers.UserUpdateDetailSerializer(request.user).data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], url_path='change_password', detail=True)
     def change_password(self, request, pk):
-        old_password = request.data.get('old_password')
-        new_password = request.data.get('new_password')
-
-        if not request.user.check_password(old_password):
-            return Response({'message': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
-
+        password_serializer = serializers.PasswordSerializer(data=request.data)
+        if password_serializer.is_valid():
+            if not request.user.check_password(password_serializer.old_password):
+                return Response({'message': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
         # set new password
-        request.user.set_password(new_password)
-        request.user.save()
-
+            request.user.set_password(password_serializer.new_password)
+            request.user.save()
         return Response(status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True, url_path='posts')
@@ -123,7 +131,7 @@ class UserViewSet(viewsets.ViewSet,
     @action(methods=['post'], detail=True, url_path='invitations')
     def add_invitations(self, request, pk):
         invitation_data = request.data
-        invitation_serializer = serializers.SurveySerializer(data=invitation_data)
+        invitation_serializer = serializers.InvitationSerializer(data=invitation_data)
         if invitation_serializer.is_valid():
             invitation = invitation_serializer.save(user=self.get_object())
             return Response(invitation_serializer.data, status=status.HTTP_201_CREATED)
@@ -150,13 +158,6 @@ class UserViewSet(viewsets.ViewSet,
 
         return Response(serializers.FriendShipSerializer(friends, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
-
-
-class UserUpdateViewSet(viewsets.ViewSet, generics.UpdateAPIView):
-    queryset = User.objects.filter(is_active=True).all()
-    serializer_class = serializers.UserSerializer
-    parser_classes = [parsers.MultiPartParser]
-    permission_classes = [permissions.IsAuthenticated]
 
 
 class FriendShipViewSet(viewsets.ViewSet,
