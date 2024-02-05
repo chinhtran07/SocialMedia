@@ -24,42 +24,31 @@ class LoginView(TokenView):
 
     @method_decorator(sensitive_post_parameters("password"))
     def post(self, request, *args, **kwargs):
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        role = int(request.POST.get('role'))
-        # pdb.set_trace()
+        data = json.loads(request.body.decode("utf-8"))
+        username = data.get("username")
+        password = data.get("password")
+        role = data.get("role")
         user = authenticate(username=username, password=password)
         if user and user.role == role:
             request.POST = request.POST.copy()
+            # pdb.set_trace()
 
             # Add application credientials
-            request.POST['grant_type'] = 'password'
-            request.POST['client_id'] = settings.CLIENT_ID
-            request.POST['client_secret'] = settings.CLIENT_SECRET
-
+            request.POST.update({
+                'grant_type': 'password',
+                'username': username,
+                'password': password,
+                'client_id': settings.CLIENT_ID,
+                'client_secret': settings.CLIENT_SECRET
+            })
             return super().post(request)
         return HttpResponse(content="Khong tim thay tai khoan", status=status.HTTP_401_UNAUTHORIZED)
 
 
-class UserViewSet(viewsets.ViewSet,
-                  generics.UpdateAPIView,
-                  generics.CreateAPIView,
-                  generics.DestroyAPIView,
-                  generics.RetrieveAPIView,
-                  mixins.FriendRequestMixin):
-    queryset = User.objects.filter(is_active=True).all()
+class RegisterView(generics.CreateAPIView):
     serializer_class = serializers.UserSerializer
-    parser_classes = [parsers.MultiPartParser, parsers.FileUploadParser]
-    permission_classes = [permissions.IsAuthenticated()]
-
-    def get_permissions(self):
-        if self.action in ['change_password', 'destroy', 'list_friends', "add_posts"]:
-            return [perms.IsOwner()]
-        if self.action.__eq__('create'):
-            return [permissions.AllowAny()]
-        if self.action in ['add_surveys', 'add_invitations']:
-            return [permissions.IsAdminUser()]
-        return self.permission_classes
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [parsers.MultiPartParser]
 
     def create(self, request, *args, **kwargs):
         data = request.data
@@ -85,10 +74,28 @@ class UserViewSet(viewsets.ViewSet,
             return Response(serializers.AlumniSerializer(alumni_profile).data, status=status.HTTP_201_CREATED)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class UserViewSet(viewsets.ViewSet,
+                  generics.UpdateAPIView,
+                  generics.DestroyAPIView,
+                  generics.RetrieveAPIView,
+                  mixins.FriendRequestMixin):
+    queryset = User.objects.filter(is_active=True).all()
+    serializer_class = serializers.UserUpdateDetailSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FileUploadParser]
+    permission_classes = [permissions.IsAuthenticated()]
+
+    def get_permissions(self):
+        if self.action in ['change_password', 'destroy', 'list_friends', "add_posts"]:
+            return [perms.IsOwner()]
+        if self.action in ['add_surveys', 'add_invitations']:
+            return [permissions.IsAdminUser()]
+        return self.permission_classes
+
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = serializers.UserUpdateDetailSerializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
 
         if serializer.is_valid():
             serializer.save()
@@ -96,11 +103,11 @@ class UserViewSet(viewsets.ViewSet,
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, *args, **kwargs):
-        return Response(serializers.UserUpdateDetailSerializer(self.get_object()).data, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(self.get_object()).data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path='current-user', url_name='current-user', detail=False)
     def current_user(self, request):
-        return Response(serializers.UserUpdateDetailSerializer(request.user).data, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(request.user).data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], url_path='change_password', detail=True)
     def change_password(self, request, pk):
@@ -108,7 +115,7 @@ class UserViewSet(viewsets.ViewSet,
         if password_serializer.is_valid():
             if not request.user.check_password(password_serializer.old_password):
                 return Response({'message': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
-        # set new password
+            # set new password
             request.user.set_password(password_serializer.new_password)
             request.user.save()
         return Response(status=status.HTTP_200_OK)
@@ -146,7 +153,7 @@ class UserViewSet(viewsets.ViewSet,
     def search(self, request):
         users = dao.search_people(params=request.GET)
 
-        return Response(serializers.UserSerializer(users, many=True, context={'request': request}).data,
+        return Response(serializers.UserInteractionSerializer(users, many=True).data,
                         status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_path='list_friends')
@@ -200,70 +207,75 @@ class PostViewSet(viewsets.ViewSet,
             return [perms.IsOwner()]
         if self.action.__eq__('destroy'):
             return [perms.IsOwner(), permissions.IsAdminUser()]
-
         return self.permission_classes
 
-    def list(self, request, *args, **kwargs):
-        user_id = request.GET.get('userId')
-        user = User.objects.get(id=user_id)
-        if user is not None:
-            posts = user.post_set.filter(active=True).order_by('-created_date').all()
-            serializer = self.get_serializer(posts, many=True, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
 
-        return super().list(request, *args, **kwargs)
+def list(self, request, *args, **kwargs):
+    user_id = request.GET.get('userId')
+    user = User.objects.get(id=user_id)
+    if user is not None:
+        posts = user.post_set.filter(active=True).order_by('-created_date').all()
+        serializer = self.get_serializer(posts, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(methods=['get'], detail=False, url_path="list-random-posts")
-    def list_random_posts(self, request):
-        posts = self.queryset
-        MAX_RANDOM_POSTS = 10
-        random_posts = random.sample(list(posts), min(len(posts), MAX_RANDOM_POSTS))
-        return Response(self.serializer_class(random_posts, many=True).data, status=status.HTTP_200_OK)
+    return super().list(request, *args, **kwargs)
 
-    @action(methods=['post'], detail=True, url_path='comments')
-    def add_comments(self, request, pk):
-        c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
 
-        return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
+@action(methods=['get'], detail=False, url_path="list-random-posts")
+def list_random_posts(self, request):
+    posts = self.queryset
+    return Response(self.serializer_class(posts, many=True).data, status=status.HTTP_200_OK)
 
-    @action(methods=['post'], detail=True, url_path='reacts')
-    def react_posts(self, request, pk):
-        type = int(request.data.get('type'))
-        reaction, created = Reaction.objects.get_or_create(user=request.user, post=self.get_object(),
-                                                           type=type)
-        if not created:
-            reaction.active = not reaction.active
-            reaction.save()
-        post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
-        return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
 
-    @action(methods=['get'], detail=True)
-    def list_comments(self, request, pk):
-        comments = self.get_object().comment_set.filter(active=True)
+@action(methods=['post'], detail=True, url_path='comments')
+def add_comments(self, request, pk):
+    c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
 
-        return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
-                        status=status.HTTP_200_OK)
+    return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
 
-    @action(methods=['get'], detail=True)
-    def list_reactions(self, request, pk):
-        reactions = self.get_object().reaction_set.filter(active=True)
-        return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
-                        status=status.HTTP_200_OK)
 
-    @action(methods=['post'], detail=True, url_path='block_comment')
-    def block_comments_post(self, request, pk):
-        post = self.get_object()
-        post.comment_blocked = not post.comment_blocked
-        post.save()
+@action(methods=['post'], detail=True, url_path='reacts')
+def react_posts(self, request, pk):
+    type = int(request.data.get('type'))
+    reaction, created = Reaction.objects.get_or_create(user=request.user, post=self.get_object(),
+                                                       type=type)
+    if not created:
+        reaction.active = not reaction.active
+        reaction.save()
+    post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
+    return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
 
-        return Response(status=status.HTTP_200_OK)
 
-    @action(methods=['POST'], detail=True)
-    def share_post(self, request, pk):
-        post_shared = Post.objects.create(user=request.user, content=request.data.get('content'),
-                                          shared_post=self.get_object())
+@action(methods=['get'], detail=True)
+def list_comments(self, request, pk):
+    comments = self.get_object().comment_set.filter(active=True)
 
-        return Response(self.serializer_class(post_shared).data, status=status.HTTP_201_CREATED)
+    return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
+                    status=status.HTTP_200_OK)
+
+
+@action(methods=['get'], detail=True)
+def list_reactions(self, request, pk):
+    reactions = self.get_object().reaction_set.filter(active=True)
+    return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
+                    status=status.HTTP_200_OK)
+
+
+@action(methods=['post'], detail=True, url_path='block_comment')
+def block_comments_post(self, request, pk):
+    post = self.get_object()
+    post.comment_blocked = not post.comment_blocked
+    post.save()
+
+    return Response(status=status.HTTP_200_OK)
+
+
+@action(methods=['POST'], detail=True)
+def share_post(self, request, pk):
+    post_shared = Post.objects.create(user=request.user, content=request.data.get('content'),
+                                      shared_post=self.get_object())
+
+    return Response(self.serializer_class(post_shared).data, status=status.HTTP_201_CREATED)
 
 
 class CommentViewSet(viewsets.ViewSet,

@@ -12,7 +12,7 @@ class User(AbstractUser):
         ALUMNI = 1, "Alumni"
         LECTURER = 2, "Lecturer"
         ADMIN = 3, "Admin"
-    role = models.IntegerField(choices=Role, default=Role.ALUMNI)
+    role = models.IntegerField(choices=Role.choices, default=Role.ALUMNI)
     avatar = CloudinaryField('avatar', null=True)
     cover_image = CloudinaryField('cover_image', null=True)
     password_changed = models.BooleanField(default=False)

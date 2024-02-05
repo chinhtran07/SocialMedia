@@ -24,7 +24,7 @@ SECRET_KEY = 'django-insecure-vd$9k&c+ib8xp2mbxnh2g1@e8f-_8n7u)%vwgkqn4li21)4)gs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.1.6', '127.0.0.1', '10.0.2.2']
 
 # Application definition
 
@@ -155,22 +155,17 @@ INTERNAL_IPS = [
 ]
 
 OAUTH2_PROVIDER = {
-    'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
+    #'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
 }
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination'
+
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
-
-CORS_ORIGIN_WHITELIST = (
-    'http://localhost:8081',
-    'exp://192.168.1.6:8081'
-)
 
 import environ
 
