@@ -142,13 +142,6 @@ MEDIA_ROOT = '%s/socialnetwork/static/' % BASE_DIR
 
 CKEDITOR_UPLOAD_PATH = "ckeditor/images/"
 
-import cloudinary
-
-cloudinary.config(
-    cloud_name="dk4uoxtsx",
-    api_key="847486433746269",
-    api_secret="1BeOWgqFyGFTG-AaRhM5S3-v8Pk"
-)
 
 INTERNAL_IPS = [
     '127.0.0.1'
@@ -171,6 +164,15 @@ import environ
 
 env = environ.Env()
 environ.Env.read_env()
+
+# Cloudinary
+import cloudinary
+
+cloudinary.config(
+    cloud_name=env(CLOUDINARY_NAME),
+    api_key=env(CLOUDINARY_KEY),
+    api_secret=env(CLOUDINARY_SECRET)
+)
 
 # Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
