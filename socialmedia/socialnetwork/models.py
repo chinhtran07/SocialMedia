@@ -12,6 +12,7 @@ class User(AbstractUser):
         ALUMNI = 1, "Alumni"
         LECTURER = 2, "Lecturer"
         ADMIN = 3, "Admin"
+    email = models.EmailField("email_address", unique=True, null=True)
     role = models.IntegerField(choices=Role.choices, default=Role.ALUMNI)
     avatar = CloudinaryField('avatar', null=True)
     cover_image = CloudinaryField('cover_image', null=True)
@@ -75,6 +76,7 @@ class Post(PostBaseModel):
 
 class Survey(PostBaseModel):
     content = models.TextField()
+    # form_id = models.CharField(max_length=20, null=True)
 
 
 class Question(BaseModel):
