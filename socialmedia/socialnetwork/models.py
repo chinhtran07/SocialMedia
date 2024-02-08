@@ -19,7 +19,7 @@ class User(AbstractUser):
     password_changed = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        if self.role == 'lecturer':
+        if self.role == User.Role.LECTURER:
             self.set_password(settings.PASSWORD_LECTURER_DEFAULT)
         super().save()
 

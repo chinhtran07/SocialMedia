@@ -1,11 +1,11 @@
 # Create your views here.
 import json
 import pdb
-import random
 from itertools import chain
 
 from django.contrib.auth import authenticate
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -13,9 +13,10 @@ from django.views.decorators.debug import sensitive_post_parameters
 from oauth2_provider.views import TokenView
 from rest_framework import viewsets, parsers, permissions, generics, status
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from . import serializers, perms, paginators, mixins, dao
+from . import serializers, perms, paginators, mixins, dao, signals
 from .models import User, AlumniProfile, Post, FriendShip, Comment, Reaction, Survey, Group, Question, Answer, \
     Invitation
 
@@ -86,6 +87,8 @@ class UserViewSet(viewsets.ViewSet,
     permission_classes = [permissions.IsAuthenticated()]
 
     def get_permissions(self):
+        if self.action == "forget_password":
+            return [permissions.AllowAny()]
         if self.action in ['change_password', 'destroy', 'list_friends', "add_posts"]:
             return [perms.IsOwner()]
         if self.action in ['add_surveys', 'add_invitations']:
@@ -161,10 +164,27 @@ class UserViewSet(viewsets.ViewSet,
         sender = request.user.friendship_requests_sent.filter(is_accepted=True).all()
         receiver = request.user.friendship_requests_received.filter(is_accepted=True).all()
 
-        friends = list(chain(sender, receiver))
+        friends = list(chain(sender, receiver), request)
 
         return Response(serializers.FriendShipSerializer(friends, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
+
+    @action(methods=['POST'], detail=False)
+    def forget_password(self, request):
+        serializer = serializers.ForgetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            user = get_object_or_404(User, email=email)
+            password = mixins.ForgetPasswordMixin().change_random_password(email=email, instance=user)
+            send_mail(
+                'CẤP MẬT KHẨU MỚI',
+                f'Mật khẩu mới của bạn là {password}. \n\n Vui lòng thay đổi mật khẩu. ',
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FriendShipViewSet(viewsets.ViewSet,

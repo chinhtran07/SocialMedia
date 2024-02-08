@@ -141,3 +141,9 @@ class PasswordSerializer(serializers.ModelSerializer):
     class Meta:
         fields = '__all__'
 
+
+class ForgetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    class Meta:
+        fields = '__all__'

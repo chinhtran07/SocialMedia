@@ -12,6 +12,7 @@ router.register('surveys', views.SurveyViewSet, basename='surveys')
 router.register('invitation', views.InvitationViewSet, basename='invitations')
 router.register('questions', views.QuestionViewSet, basename='questions')
 
+
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', views.LoginView.as_view(), name='login'),
