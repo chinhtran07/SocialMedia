@@ -44,6 +44,11 @@ INSTALLED_APPS = [
     'drf_yasg',
     'oauth2_provider',
     'corsheaders',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'social_django',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +63,7 @@ MIDDLEWARE = [
     'oauth2_provider.middleware.OAuth2TokenMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'socialnetwork.middleware.PasswordChangeLecturerMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'socialmedia.urls'
@@ -142,13 +148,12 @@ MEDIA_ROOT = '%s/socialnetwork/static/' % BASE_DIR
 
 CKEDITOR_UPLOAD_PATH = "ckeditor/images/"
 
-
 INTERNAL_IPS = [
     '127.0.0.1'
 ]
 
 OAUTH2_PROVIDER = {
-    #'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
+    # 'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore',
 }
 
 REST_FRAMEWORK = {
@@ -157,6 +162,12 @@ REST_FRAMEWORK = {
     ),
 
 }
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'social_core.backends.google.GoogleOAuth2',
+)
 
 CORS_ORIGIN_ALLOW_ALL = True
 
@@ -186,3 +197,21 @@ PASSWORD_LECTURER_DEFAULT = env("PASSWORD_LECTURER_DEFAULT")
 
 CLIENT_ID = env("CLIENT_ID")
 CLIENT_SECRET = env("CLIENT_SECRET")
+
+SITE_ID = 1
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('CLIENT_ID_GOOGLE')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('CLIENT_SECRET_GOOGLE')
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        # For each OAuth based provider, either add a ``SocialApp``
+        # (``socialaccount`` app) containing the required client
+        # credentials, or list them here:
+        'APP': {
+            'client_id': SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+            'secret': SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
+            'key': ''
+        }
+    }
+}

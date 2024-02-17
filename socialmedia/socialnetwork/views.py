@@ -123,9 +123,9 @@ class UserViewSet(viewsets.ViewSet,
             request.user.save()
         return Response(status=status.HTTP_200_OK)
 
-    @action(methods=['post'], detail=True, url_path='posts')
-    def add_posts(self, request, pk):
-        post = Post.objects.create(user=self.get_object(), content=request.data.get('content'))
+    @action(methods=['post'], detail=False, url_path='posts')
+    def add_posts(self, request):
+        post = Post.objects.create(user=request.user, content=request.data.get('content'))
 
         return Response(serializers.PostSerializer(post).data, status=status.HTTP_201_CREATED)
 
@@ -230,72 +230,72 @@ class PostViewSet(viewsets.ViewSet,
         return self.permission_classes
 
 
-def list(self, request, *args, **kwargs):
-    user_id = request.GET.get('userId')
-    user = User.objects.get(id=user_id)
-    if user is not None:
-        posts = user.post_set.filter(active=True).order_by('-created_date').all()
-        serializer = self.get_serializer(posts, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def list(self, request, *args, **kwargs):
+        user_id = request.GET.get('userId')
+        user = User.objects.get(id=user_id)
+        if user is not None:
+            posts = user.post_set.filter(active=True).order_by('-created_date').all()
+            serializer = self.get_serializer(posts, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-    return super().list(request, *args, **kwargs)
-
-
-@action(methods=['get'], detail=False, url_path="list-random-posts")
-def list_random_posts(self, request):
-    posts = self.queryset
-    return Response(self.serializer_class(posts, many=True).data, status=status.HTTP_200_OK)
+        return super().list(request, *args, **kwargs)
 
 
-@action(methods=['post'], detail=True, url_path='comments')
-def add_comments(self, request, pk):
-    c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
-
-    return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
-
-
-@action(methods=['post'], detail=True, url_path='reacts')
-def react_posts(self, request, pk):
-    type = int(request.data.get('type'))
-    reaction, created = Reaction.objects.get_or_create(user=request.user, post=self.get_object(),
-                                                       type=type)
-    if not created:
-        reaction.active = not reaction.active
-        reaction.save()
-    post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
-    return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
+    @action(methods=['get'], detail=False, url_path="list-random-posts")
+    def list_random_posts(self, request):
+        posts = self.queryset
+        return Response(self.serializer_class(posts, many=True).data, status=status.HTTP_200_OK)
 
 
-@action(methods=['get'], detail=True)
-def list_comments(self, request, pk):
-    comments = self.get_object().comment_set.filter(active=True)
+    @action(methods=['post'], detail=True, url_path='comments')
+    def add_comments(self, request, pk):
+        c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
 
-    return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
-                    status=status.HTTP_200_OK)
-
-
-@action(methods=['get'], detail=True)
-def list_reactions(self, request, pk):
-    reactions = self.get_object().reaction_set.filter(active=True)
-    return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
-                    status=status.HTTP_200_OK)
+        return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
 
 
-@action(methods=['post'], detail=True, url_path='block_comment')
-def block_comments_post(self, request, pk):
-    post = self.get_object()
-    post.comment_blocked = not post.comment_blocked
-    post.save()
+    @action(methods=['post'], detail=True, url_path='reacts')
+    def react_posts(self, request, pk):
+        type = int(request.data.get('type'))
+        reaction, created = Reaction.objects.get_or_create(user=request.user, post=self.get_object(),
+                                                           type=type)
+        if not created:
+            reaction.active = not reaction.active
+            reaction.save()
+        post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
+        return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
 
-    return Response(status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=True)
+    def list_comments(self, request, pk):
+        comments = self.get_object().comment_set.filter(active=True)
+
+        return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
 
-@action(methods=['POST'], detail=True)
-def share_post(self, request, pk):
-    post_shared = Post.objects.create(user=request.user, content=request.data.get('content'),
-                                      shared_post=self.get_object())
+    @action(methods=['get'], detail=True)
+    def list_reactions(self, request, pk):
+        reactions = self.get_object().reaction_set.filter(active=True)
+        return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
-    return Response(self.serializer_class(post_shared).data, status=status.HTTP_201_CREATED)
+
+    @action(methods=['post'], detail=True, url_path='block_comment')
+    def block_comments_post(self, request, pk):
+        post = self.get_object()
+        post.comment_blocked = not post.comment_blocked
+        post.save()
+
+        return Response(status=status.HTTP_200_OK)
+
+
+    @action(methods=['POST'], detail=True)
+    def share_post(self, request, pk):
+        post_shared = Post.objects.create(user=request.user, content=request.data.get('content'),
+                                          shared_post=self.get_object())
+
+        return Response(self.serializer_class(post_shared).data, status=status.HTTP_201_CREATED)
 
 
 class CommentViewSet(viewsets.ViewSet,
