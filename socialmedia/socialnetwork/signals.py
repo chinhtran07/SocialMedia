@@ -42,7 +42,7 @@ def send_email_invitation(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def send_mail_confirmation(sender, instance, **kwargs):
-    if instance.role == instance.Role.ALUMNI and instance.is_active:
+    if instance.role == instance.Role.ALUMNI and instance.is_active and instance.password_changed:
         subject = 'Account Confirmation'
         message = f'Chào bạn {instance.get_full_name()} \n\nTài khoản bạn đã được xác nhận.'
         from_email = settings.EMAIL_HOST_USER

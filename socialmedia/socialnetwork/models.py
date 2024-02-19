@@ -74,6 +74,11 @@ class Post(PostBaseModel):
     content = RichTextField(null=True)
 
 
+class Image(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
+    image = CloudinaryField('image')
+
+
 class Survey(PostBaseModel):
     content = models.TextField()
     # form_id = models.CharField(max_length=20, null=True)

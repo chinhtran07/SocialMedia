@@ -1,15 +1,23 @@
 from rest_framework import serializers
 
 from .models import User, AlumniProfile, Post, Comment, FriendShip, Group, Question, Survey, \
-    Invitation, Reaction
+    Invitation, Reaction, Image
+
+
+class AlumniSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AlumniProfile
+        fields = ['student_id']
 
 
 class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(required=True, write_only=True)
+    student_id = serializers.PrimaryKeyRelatedField(queryset=AlumniProfile.objects.all())
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'password', 'email', 'avatar']
+        fields = ['first_name', 'last_name', 'username', 'password', 'email', 'avatar', 'student_id']
         extra_kwargs = {
             'password': {
                 'write_only': True
@@ -17,13 +25,14 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        data = validated_data.copy()
+        student_id = validated_data.pop('student_id', '')
 
-        user = User(**data)
-        user.set_password(data['password'])
+        user = User(**validated_data)
+        user.set_password(validated_data['password'])
         # student is not confirmed
         user.is_active = False
         user.save()
+        AlumniProfile.objects.create(user=user, **student_id)
 
         return user
 
@@ -54,25 +63,28 @@ class FriendShipSerializer(serializers.ModelSerializer):
         fields = ['id', 'sender', 'receiver', 'is_accepted']
 
 
-class AlumniSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+class ImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
 
     class Meta:
-        model = AlumniProfile
-        fields = ['student_id', 'user']
-        extra_kwargs = {
-            'student_id': {
-                'required': True
-            }
-        }
+        model = Image
+        fields = ['image']
 
 
 class PostSerializer(serializers.ModelSerializer):
     user = UserInteractionSerializer()
+    images = ImageSerializer(many=True, required=False)
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'comment_blocked', 'created_date', 'updated_date', 'user', 'shared_post']
+        fields = ['id', 'content', 'images', 'comment_blocked', 'created_date', 'updated_date', 'user', 'shared_post']
+
+    def create(self, validated_data):
+        images_data = validated_data.pop('images', [])
+        post = Post.objects.create(**validated_data)
+        for image in images_data:
+            Image.objects.create(post=post, **image)
+        return post
 
 
 class PostDetailSerializer(PostSerializer):
@@ -147,3 +159,4 @@ class ForgetPasswordSerializer(serializers.Serializer):
 
     class Meta:
         fields = '__all__'
+

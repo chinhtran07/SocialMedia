@@ -52,28 +52,11 @@ class RegisterView(generics.CreateAPIView):
     parser_classes = [parsers.MultiPartParser]
 
     def create(self, request, *args, **kwargs):
-        data = request.data
-
-        avatar = data.get('avatar')
-        user_data = {
-            'first_name': data.get('first_name'),
-            'last_name': data.get('last_name'),
-            'username': data.get('username'),
-            'password': data.get('password'),
-            'email': data.get('email'),
-            'avatar': avatar
-        }
-        user_serializer = self.get_serializer(data=user_data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            try:
-                alumni_profile = AlumniProfile.objects.create(user=user, student_id=request.data.get('student_id'))
-            except IntegrityError as e:
-                user.delete()
-                return Response(data={'message': f'Student ID {request.data.get("student_id")} is duplicated'},
-                                status=status.HTTP_400_BAD_REQUEST)
-            return Response(serializers.AlumniSerializer(alumni_profile).data, status=status.HTTP_201_CREATED)
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ViewSet,
@@ -83,7 +66,7 @@ class UserViewSet(viewsets.ViewSet,
                   mixins.FriendRequestMixin):
     queryset = User.objects.filter(is_active=True).all()
     serializer_class = serializers.UserUpdateDetailSerializer
-    parser_classes = [parsers.MultiPartParser, parsers.FileUploadParser]
+    parser_classes = [parsers.FileUploadParser]
     permission_classes = [permissions.IsAuthenticated()]
 
     def get_permissions(self):
@@ -125,7 +108,7 @@ class UserViewSet(viewsets.ViewSet,
 
     @action(methods=['post'], detail=False, url_path='posts')
     def add_posts(self, request):
-        post = Post.objects.create(user=request.user, content=request.data.get('content'))
+        post = Post.objects.create(user=request.user, data=request.data)
 
         return Response(serializers.PostSerializer(post).data, status=status.HTTP_201_CREATED)
 
@@ -229,7 +212,6 @@ class PostViewSet(viewsets.ViewSet,
             return [perms.IsOwner(), permissions.IsAdminUser()]
         return self.permission_classes
 
-
     def list(self, request, *args, **kwargs):
         user_id = request.GET.get('userId')
         user = User.objects.get(id=user_id)
@@ -240,19 +222,16 @@ class PostViewSet(viewsets.ViewSet,
 
         return super().list(request, *args, **kwargs)
 
-
     @action(methods=['get'], detail=False, url_path="list-random-posts")
     def list_random_posts(self, request):
         posts = self.queryset
         return Response(self.serializer_class(posts, many=True).data, status=status.HTTP_200_OK)
-
 
     @action(methods=['post'], detail=True, url_path='comments')
     def add_comments(self, request, pk):
         c = Comment.objects.create(user=request.user, post=self.get_object(), content=request.data.get('content'))
 
         return Response(serializers.CommentSerializer(c).data, status=status.HTTP_201_CREATED)
-
 
     @action(methods=['post'], detail=True, url_path='reacts')
     def react_posts(self, request, pk):
@@ -265,7 +244,6 @@ class PostViewSet(viewsets.ViewSet,
         post_detail_serializer = self.get_serializer(self.get_object(), context={'request': request})
         return Response(post_detail_serializer.data, status=status.HTTP_204_NO_CONTENT)
 
-
     @action(methods=['get'], detail=True)
     def list_comments(self, request, pk):
         comments = self.get_object().comment_set.filter(active=True)
@@ -273,13 +251,11 @@ class PostViewSet(viewsets.ViewSet,
         return Response(serializers.CommentSerializer(comments, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
 
-
     @action(methods=['get'], detail=True)
     def list_reactions(self, request, pk):
         reactions = self.get_object().reaction_set.filter(active=True)
         return Response(serializers.ReactionSerializer(reactions, many=True, context={'request': request}).data,
                         status=status.HTTP_200_OK)
-
 
     @action(methods=['post'], detail=True, url_path='block_comment')
     def block_comments_post(self, request, pk):
@@ -288,7 +264,6 @@ class PostViewSet(viewsets.ViewSet,
         post.save()
 
         return Response(status=status.HTTP_200_OK)
-
 
     @action(methods=['POST'], detail=True)
     def share_post(self, request, pk):
