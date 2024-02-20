@@ -18,7 +18,7 @@ from rest_framework.response import Response
 
 from . import serializers, perms, paginators, mixins, dao, signals
 from .models import User, AlumniProfile, Post, FriendShip, Comment, Reaction, Survey, Group, Question, Answer, \
-    Invitation
+    Invitation, Image
 
 
 class LoginView(TokenView):
@@ -52,9 +52,13 @@ class RegisterView(generics.CreateAPIView):
     parser_classes = [parsers.MultiPartParser]
 
     def create(self, request, *args, **kwargs):
+        if AlumniProfile.objects.filter(student_id=request.data.get('student_id')).exists():
+            # If AlumniProfile already exists, raise an error
+            return Response({'student_id': 'student_id is existed'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            alumni = AlumniProfile.objects.create(user=user, student_id=request.data.get('student_id'))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -66,7 +70,7 @@ class UserViewSet(viewsets.ViewSet,
                   mixins.FriendRequestMixin):
     queryset = User.objects.filter(is_active=True).all()
     serializer_class = serializers.UserUpdateDetailSerializer
-    parser_classes = [parsers.FileUploadParser]
+    parser_classes = [parsers.MultiPartParser]
     permission_classes = [permissions.IsAuthenticated()]
 
     def get_permissions(self):
@@ -108,7 +112,9 @@ class UserViewSet(viewsets.ViewSet,
 
     @action(methods=['post'], detail=False, url_path='posts')
     def add_posts(self, request):
-        post = Post.objects.create(user=request.user, data=request.data)
+        post = Post.objects.create(user=request.user, content=request.data.get('content'))
+        for image in request.data.getlist('images'):
+            Image.objects.create(post=post, image=image)
 
         return Response(serializers.PostSerializer(post).data, status=status.HTTP_201_CREATED)
 
@@ -212,20 +218,11 @@ class PostViewSet(viewsets.ViewSet,
             return [perms.IsOwner(), permissions.IsAdminUser()]
         return self.permission_classes
 
-    def list(self, request, *args, **kwargs):
-        user_id = request.GET.get('userId')
-        user = User.objects.get(id=user_id)
-        if user is not None:
-            posts = user.post_set.filter(active=True).order_by('-created_date').all()
-            serializer = self.get_serializer(posts, many=True, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return super().list(request, *args, **kwargs)
-
     @action(methods=['get'], detail=False, url_path="list-random-posts")
     def list_random_posts(self, request):
-        posts = self.queryset
-        return Response(self.serializer_class(posts, many=True).data, status=status.HTTP_200_OK)
+        posts = self.queryset.order_by('-created_date').all()
+        return Response(self.serializer_class(posts, many=True, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True, url_path='comments')
     def add_comments(self, request, pk):

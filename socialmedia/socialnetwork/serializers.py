@@ -1,23 +1,17 @@
+import pdb
+
 from rest_framework import serializers
 
 from .models import User, AlumniProfile, Post, Comment, FriendShip, Group, Question, Survey, \
     Invitation, Reaction, Image
 
 
-class AlumniSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = AlumniProfile
-        fields = ['student_id']
-
-
 class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(required=True, write_only=True)
-    student_id = serializers.PrimaryKeyRelatedField(queryset=AlumniProfile.objects.all())
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'password', 'email', 'avatar', 'student_id']
+        fields = ['first_name', 'last_name', 'username', 'password', 'email', 'avatar']
         extra_kwargs = {
             'password': {
                 'write_only': True
@@ -25,14 +19,11 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        student_id = validated_data.pop('student_id', '')
-
         user = User(**validated_data)
         user.set_password(validated_data['password'])
         # student is not confirmed
         user.is_active = False
         user.save()
-        AlumniProfile.objects.create(user=user, **student_id)
 
         return user
 
@@ -79,13 +70,6 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ['id', 'content', 'images', 'comment_blocked', 'created_date', 'updated_date', 'user', 'shared_post']
 
-    def create(self, validated_data):
-        images_data = validated_data.pop('images', [])
-        post = Post.objects.create(**validated_data)
-        for image in images_data:
-            Image.objects.create(post=post, **image)
-        return post
-
 
 class PostDetailSerializer(PostSerializer):
     reacted = serializers.SerializerMethodField()
@@ -115,10 +99,9 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class SurveySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Survey
-        fields = ['content',]
+        fields = ['content', ]
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -159,4 +142,3 @@ class ForgetPasswordSerializer(serializers.Serializer):
 
     class Meta:
         fields = '__all__'
-
