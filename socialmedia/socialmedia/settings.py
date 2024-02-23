@@ -198,20 +198,5 @@ PASSWORD_LECTURER_DEFAULT = env("PASSWORD_LECTURER_DEFAULT")
 CLIENT_ID = env("CLIENT_ID")
 CLIENT_SECRET = env("CLIENT_SECRET")
 
-SITE_ID = 1
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('CLIENT_ID_GOOGLE')
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('CLIENT_SECRET_GOOGLE')
-SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
-
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        # For each OAuth based provider, either add a ``SocialApp``
-        # (``socialaccount`` app) containing the required client
-        # credentials, or list them here:
-        'APP': {
-            'client_id': SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
-            'secret': SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
-            'key': ''
-        }
-    }
-}
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")

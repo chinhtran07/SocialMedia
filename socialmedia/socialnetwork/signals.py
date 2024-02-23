@@ -1,5 +1,4 @@
-from django.conf import settings
-from django.core.mail import get_connection, EmailMessage, send_mail
+from django.core.mail import send_mail
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 import pdb
@@ -25,18 +24,20 @@ def send_email_invitation(sender, instance, created, **kwargs):
     if created:
         subject = 'THƯ MỜI SỰ KIỆN'
         message = f'Chào các bạn,'
-        f'\n\nMời các bạn tham gia, {instance.content}'
+        f'\n\nMời các bạn tham gia, {instance.title} vào lúc {instance.time} tại {instance.place}'
         from_email = settings.EMAIL_HOST_USER
         fail_silently = False
         recipient_list = []
 
-        for user in instance.recipients_users.all():
+        users = instance.recipients_users.all()
+        for user in users:
             recipient_list.append(user.email)
-
-        for group in instance.recipients_groups.all():
-            for user in group.user_set.all():
+        groups = instance.recipients_groups.all()
+        for group in groups:
+            for user in group.group_members.all():
                 recipient_list.append(user.email)
-
+        print(users)
+        print(groups)
         send_mail(subject, message, from_email, recipient_list, fail_silently)
 
 

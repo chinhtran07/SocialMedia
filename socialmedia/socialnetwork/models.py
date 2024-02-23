@@ -80,24 +80,51 @@ class Image(models.Model):
 
 
 class Survey(PostBaseModel):
-    content = models.TextField()
-    # form_id = models.CharField(max_length=20, null=True)
+    title = models.TextField()
+
+    def __str__(self):
+        return self.title
 
 
 class Question(BaseModel):
-    content = models.TextField()
+    class Type(models.IntegerChoices):
+        TEXT = 1, "Text"
+        MULTICHOICE = 2, "MCQ"
+    type = models.IntegerField(choices=Type.choices, default=Type.TEXT)
+    title = models.CharField(max_length=255, null=True)
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name="questions")
 
+    def __str__(self):
+        return self.title
 
-class Answer(models.Model):
+
+class Choice(models.Model):
     content = models.TextField()
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='questions', null=True)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices', null=True)
+
+
+class SurveyResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
+    response_date = models.DateTimeField(auto_now_add=True)
+
+
+class QuestionResponse(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    response = models.TextField()
+    survey_response = models.ForeignKey(SurveyResponse, on_delete=models.CASCADE)
 
 
 class Invitation(PostBaseModel):
+    title = models.CharField(max_length=255, null=True)
     content = models.TextField()
-    recipients_users = models.ManyToManyField(User, related_name='notifications_received')
-    recipients_groups = models.ManyToManyField(Group, related_name='notifications_received')
+    time = models.DateTimeField(null=True)
+    place = models.CharField(max_length=255, null=True)
+    recipients_users = models.ManyToManyField(User, related_name='recipients_users')
+    recipients_groups = models.ManyToManyField(Group, related_name='recipients_groups')
+
+    def __str__(self):
+        return self.title
 
 
 class Interaction(BaseModel):

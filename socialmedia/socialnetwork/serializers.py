@@ -2,8 +2,8 @@ import pdb
 
 from rest_framework import serializers
 
-from .models import User, AlumniProfile, Post, Comment, FriendShip, Group, Question, Survey, \
-    Invitation, Reaction, Image
+from .models import User, Post, Comment, FriendShip, Group, Question, Survey, \
+    Invitation, Reaction, Image, Choice, SurveyResponse, QuestionResponse
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -92,16 +92,40 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class ChoiceSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Choice
+        fields = ['content']
+
+
 class QuestionSerializer(serializers.ModelSerializer):
+    choices = ChoiceSerializer(many=True)
+
     class Meta:
         model = Question
-        fields = '__all__'
+        fields = ['id', 'type', 'title', 'choices']
 
 
 class SurveySerializer(serializers.ModelSerializer):
+    questions = QuestionSerializer(many=True)
+    user = UserInteractionSerializer()
+
     class Meta:
         model = Survey
-        fields = ['content', ]
+        fields = ['title', 'questions', 'user']
+
+
+class SurveyResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyResponse
+        fields = '__all__'
+
+
+class QuestionResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionResponse
+        fields = '__all__'
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -113,12 +137,11 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
-    recipients_users = UserInteractionSerializer(many=True, read_only=True)
-    recipients_groups = GroupSerializer(many=True, read_only=True)
+    user = UserInteractionSerializer()
 
     class Meta:
         model = Invitation
-        fields = '__all__'
+        fields = ['user', 'title', 'content', 'time', 'place', 'recipients_users', 'recipients_groups']
 
 
 class ReactionSerializer(serializers.ModelSerializer):

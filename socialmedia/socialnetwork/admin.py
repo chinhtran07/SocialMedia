@@ -77,8 +77,13 @@ class PostForm(forms.ModelForm):
         fields = '__all__'
 
 
+class ImagesInlineAdmin(admin.StackedInline):
+    model = Image
+
+
 class PostAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'created_date', 'active']
+    inlines = [ImagesInlineAdmin, ]
     form = PostForm
 
 
@@ -86,6 +91,32 @@ class GroupAdmin(admin.ModelAdmin):
     list_display = ['name']
 
 
+class ChoiceInlineAdmin(admin.StackedInline):
+    model = Choice
+
+
+class QuestionInline(admin.StackedInline):
+    model = Question
+
+
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'type', 'title', 'survey', ]
+    inlines = [ChoiceInlineAdmin, ]
+
+
+class SurveyAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'title']
+    inlines = [QuestionInline, ]
+
+
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'title', 'time', 'place']
+
+
 admin_site.register(User, UserAdmin)
 admin_site.register(AlumniProfile, AlumniAdmin)
 admin_site.register(Post, PostAdmin)
+admin_site.register(Survey, SurveyAdmin)
+admin_site.register(Question, QuestionAdmin)
+admin_site.register(Invitation, InvitationAdmin)
+admin_site.register(Group, GroupAdmin)

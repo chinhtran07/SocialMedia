@@ -10,7 +10,8 @@ router.register('friendship', views.FriendShipViewSet, basename='friendship')
 router.register('groups', views.GroupViewSet, basename='groups')
 router.register('surveys', views.SurveyViewSet, basename='surveys')
 router.register('invitation', views.InvitationViewSet, basename='invitations')
-router.register('questions', views.QuestionViewSet, basename='questions')
+router.register('survey-response', views.SurveyResponseViewSet, basename='survey-response')
+router.register('question-response', views.QuestionResponseViewSet, basename='question-response')
 
 
 urlpatterns = [
