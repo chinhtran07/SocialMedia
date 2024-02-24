@@ -130,7 +130,6 @@ class UserViewSet(viewsets.ViewSet,
                     choice = Choice.objects.create(content=item, question=q)
         return Response(serializers.SurveySerializer(survey).data, status=status.HTTP_201_CREATED)
 
-
     @action(methods=['post'], detail=False, url_path='invitations')
     def add_invitations(self, request):
         data = request.data
@@ -248,9 +247,13 @@ class PostViewSet(viewsets.ViewSet,
 
     @action(methods=['get'], detail=False, url_path="list-random-posts")
     def list_random_posts(self, request):
+        paginator = self.pagination_class()
         posts = self.queryset.order_by('-created_date').all()
-        return Response(self.serializer_class(posts, many=True, context={'request': request}).data,
-                        status=status.HTTP_200_OK)
+        result_page = paginator.paginate_queryset(posts, request)
+        serializer = self.serializer_class(result_page, many=True, context={'request': request})
+        response = paginator.get_paginated_response(serializer.data)
+
+        return response
 
     @action(methods=['post'], detail=True, url_path='comments')
     def add_comments(self, request, pk):
