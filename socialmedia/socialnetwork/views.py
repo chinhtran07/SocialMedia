@@ -247,11 +247,10 @@ class PostViewSet(viewsets.ViewSet,
 
     @action(methods=['get'], detail=False, url_path="list-random-posts")
     def list_random_posts(self, request):
-        paginator = self.pagination_class()
         posts = self.queryset.order_by('-created_date').all()
-        result_page = paginator.paginate_queryset(posts, request)
+        result_page = self.paginate_queryset(posts)
         serializer = self.serializer_class(result_page, many=True, context={'request': request})
-        response = paginator.get_paginated_response(serializer.data)
+        response = self.get_paginated_response(serializer.data)
 
         return response
 
@@ -357,6 +356,11 @@ class SurveyViewSet(viewsets.ViewSet,
     queryset = Survey.objects.filter(active=True).all()
     serializer_class = serializers.SurveySerializer
     permission_classes = [permissions.IsAdminUser]
+    pagination_class = paginators.PostPaginator
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return [permissions.IsAuthenticated(), permissions.IsAdminUser()]
 
 
 class InvitationViewSet(viewsets.ViewSet,

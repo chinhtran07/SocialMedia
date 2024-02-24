@@ -96,7 +96,7 @@ class ChoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Choice
-        fields = ['content']
+        fields = ['id', 'content']
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -113,7 +113,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Survey
-        fields = ['title', 'questions', 'user']
+        fields = ['id','title', 'questions', 'user']
 
 
 class SurveyResponseSerializer(serializers.ModelSerializer):
