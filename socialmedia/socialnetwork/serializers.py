@@ -1,4 +1,4 @@
-import pdb
+# import pdb
 
 from rest_framework import serializers
 
@@ -113,19 +113,23 @@ class SurveySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Survey
-        fields = ['id','title', 'questions', 'user']
-
-
-class SurveyResponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SurveyResponse
-        fields = '__all__'
+        fields = ['id', 'title', 'questions', 'user']
 
 
 class QuestionResponseSerializer(serializers.ModelSerializer):
+    question = QuestionSerializer()
+
     class Meta:
         model = QuestionResponse
-        fields = '__all__'
+        fields = ['id', 'question', 'response']
+
+
+class SurveyResponseSerializer(serializers.ModelSerializer):
+    question_responses = QuestionResponseSerializer(many=True, source='questionresponse_set')
+
+    class Meta:
+        model = SurveyResponse
+        fields = ['id', 'user', 'survey', 'question_responses', 'response_date']
 
 
 class GroupSerializer(serializers.ModelSerializer):

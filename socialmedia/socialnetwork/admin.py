@@ -19,7 +19,8 @@ class SocialNetworkAppAdminSite(admin.AdminSite):
 
     def get_urls(self):
         return [
-            path('stats/', self.stats_view)
+            path('stats/', self.stats_view),
+            path('survey_stats/', self.survey_stats_view)
         ] + super().get_urls()
 
     def stats_view(self, request):
@@ -32,6 +33,15 @@ class SocialNetworkAppAdminSite(admin.AdminSite):
         else:
             stats = dao.count_posts_by_time_period(period, year)
         return TemplateResponse(request, 'admin/stats.html', {'stats': stats, 'period': period})
+
+    def survey_stats_view(self, request):
+        survey_id = request.POST.get('survey_id')
+        statistic_data = dao.stats_survey(survey_id)
+
+        return TemplateResponse(request, 'admin/survey_stats.html',
+                                {'survey': statistic_data['survey'],
+                                 'text_questions': statistic_data['text_questions'],
+                                 'mcq_counts': statistic_data['multiple_choice_question_counts']})
 
 
 admin_site = SocialNetworkAppAdminSite(name='myapp')
@@ -64,7 +74,7 @@ class AlumniAdmin(admin.ModelAdmin):
 class UserAdmin(admin.ModelAdmin):
     list_display = ['id', 'username', 'email', 'role', 'is_active']
     search_fields = ['username']
-    list_filter = ['role', 'username', 'first_name',]
+    list_filter = ['role', 'username', 'first_name', ]
     inlines = [AlumniProfileInlineAdmin, ]
     actions = [reset_password_change_time, confirm_student]
 

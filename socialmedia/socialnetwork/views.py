@@ -355,12 +355,26 @@ class SurveyViewSet(viewsets.ViewSet,
                     generics.RetrieveAPIView):
     queryset = Survey.objects.filter(active=True).all()
     serializer_class = serializers.SurveySerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
     pagination_class = paginators.PostPaginator
 
-    def get_permissions(self):
-        if self.action == 'list':
-            return [permissions.IsAuthenticated(), permissions.IsAdminUser()]
+    def list(self, request, *args, **kwargs):
+        surveys = self.queryset.order_by('-created_date').all()
+        return Response(self.get_serializer(surveys, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['POST'], detail=True, url_path='response')
+    def response_surveys(self, request, pk):
+        data = request.data
+        survey_response = SurveyResponse.objects.create(user=request.user, survey=self.get_object())
+        question_responses = data.get('question_responses')
+        for item in question_responses:
+            question = Question.objects.get(id=item.get('questionId'))
+            QuestionResponse.objects.create(
+                question=question,
+                survey_response=survey_response,
+                response=item.get('response')
+            )
+        return Response(serializers.SurveyResponseSerializer(survey_response).data, status=status.HTTP_201_CREATED)
 
 
 class InvitationViewSet(viewsets.ViewSet,
@@ -371,12 +385,3 @@ class InvitationViewSet(viewsets.ViewSet,
     permission_classes = [permissions.IsAdminUser]
 
 
-class SurveyResponseViewSet(viewsets.ModelViewSet):
-    queryset = SurveyResponse.objects.all()
-    serializer_class = serializers.SurveyResponseSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-class QuestionResponseViewSet(viewsets.ModelViewSet):
-    queryset = QuestionResponse.objects.all()
-    serializer_class = serializers.QuestionResponseSerializer

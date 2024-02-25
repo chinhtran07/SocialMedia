@@ -2,8 +2,10 @@ import pdb
 
 from django.db.models import Count, Q, Value, CharField
 from django.db.models.functions import ExtractMonth, ExtractYear, ExtractQuarter, Concat
+from django.shortcuts import get_object_or_404
+from django.http import Http404
 
-from .models import User, Post
+from .models import User, Post, Survey, SurveyResponse
 
 
 def search_people(params={}):
@@ -74,3 +76,32 @@ def count_posts_by_time_period(period='year', year=None):
     )
 
     return post_creation_count
+
+
+def stats_survey(survey_id):
+    text_questions = []
+    multiple_choice_question_counts = {}
+    try:
+        survey = get_object_or_404(Survey, pk=survey_id)
+        responses = SurveyResponse.objects.filter(survey=survey)
+        for response in responses:
+            for question_response in response.questionresponse_set.all():
+                if question_response.question.type == 1:
+                    text_questions.append(question_response.response)
+                elif question_response.question.type == 2:
+                    question_title = question_response.question.title
+                    response_choice = question_response.response
+                    if question_title not in multiple_choice_question_counts:
+                        multiple_choice_question_counts[question_title] = {}
+                    if response_choice not in multiple_choice_question_counts[question_title]:
+                        multiple_choice_question_counts[question_title][response_choice] = 1
+                    else:
+                        multiple_choice_question_counts[question_title][response_choice] += 1
+
+                return {
+                    'survey': survey,
+                    'text_questions': text_questions,
+                    'multiple_choice_question_counts': multiple_choice_question_counts
+                }
+    except Http404:
+        return None
