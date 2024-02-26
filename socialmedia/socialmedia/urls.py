@@ -52,5 +52,4 @@ urlpatterns = [
                        namespace='oauth2_provider')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     path('accounts/', include('allauth.urls')),
-    path('social-auth/', include('social_django.urls', namespace='social')),
 ]

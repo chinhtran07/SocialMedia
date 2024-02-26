@@ -1,10 +1,10 @@
 # Create your views here.
+import datetime
 import json
 import pdb
 from itertools import chain
 
 from django.contrib.auth import authenticate
-from django.conf import settings
 from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -14,11 +14,11 @@ from rest_framework import viewsets, parsers, permissions, generics, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+import firebase_admin
+from firebase_admin import firestore
 
-
-from . import serializers, perms, paginators, mixins, dao, signals
-from .models import User, AlumniProfile, Post, FriendShip, Comment, Reaction, Survey, Group, Question, \
-    Invitation, Image, Choice, SurveyResponse, QuestionResponse
+from . import serializers, perms, paginators, mixins, dao
+from .models import *
 
 
 class LoginView(TokenView):
@@ -241,9 +241,7 @@ class PostViewSet(viewsets.ViewSet,
             user = User.objects.get(pk=q)
             if user:
                 queries = user.post_set.filter(active=True).order_by('-created_date').all()
-
-                return queries
-        return []
+        return queries
 
     @action(methods=['get'], detail=False, url_path="list-random-posts")
     def list_random_posts(self, request):
@@ -385,3 +383,87 @@ class InvitationViewSet(viewsets.ViewSet,
     permission_classes = [permissions.IsAdminUser]
 
 
+class NotificationViewSet(viewsets.ViewSet,
+                          generics.ListAPIView):
+    queryset = Notification.objects.all()
+    serializer_class = serializers.NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queries = self.queryset
+
+        q = self.request.query_params.get("userId")
+
+        if q:
+            user = User.objects.get(pk=q)
+            if user:
+                queries = user.notifications.order_by('-created_at')[:10]
+
+        return queries
+
+    @action(methods=['patch'], detail=True)
+    def mark_notification_as_read(self, request, pk):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MessageViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=['post'])
+    def send_message(self, request):
+        receiver_id = request.data.get('receiver_id')
+        message_text = request.data.get('message')
+
+        if receiver_id and message_text:
+            sender = request.user
+            receiver = User.objects.get(id=receiver_id)
+
+            # Save message to Firebase Realtime Database
+            db = firestore.client()
+            chat_ref = db.collection('chats').document(f"{sender.id}_{receiver.id}")
+            # Get existing messages
+            existing_messages = chat_ref.get().to_dict()
+            if existing_messages:
+                existing_messages = existing_messages.get('messages', [])
+
+            server_timestamp = datetime.datetime.now()
+
+            # Append the new message
+            existing_messages.append({
+                'sender_id': sender.id,
+                'receiver_id': receiver.id,
+                'text': message_text,
+                'timestamp': server_timestamp
+            })
+
+            chat_ref.set({'messages': existing_messages})
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'error': 'Receiver ID and message are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], permission_classes=[perms.IsOwnerOfMessage])
+    def list_user_messages(self, request):
+        receiver_id = request.query_params.get('receiver_id')
+        if receiver_id:
+            sender = request.user
+            receiver = User.objects.get(id=receiver_id)
+
+            sender_to_receiver_messages = self.get_user_messages(sender.id, receiver.id)
+            receiver_to_sender_messages = self.get_user_messages(receiver.id, sender.id)
+
+            all_messages = sender_to_receiver_messages + receiver_to_sender_messages
+
+            return Response(all_messages, status=status.HTTP_200_OK)
+        return Response({'error': 'Receiver ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_user_messages(self, sender_id, receiver_id):
+        db = firestore.client()
+        chat_ref = db.collection('chats').document(f"{sender_id}_{receiver_id}")
+        messages_doc = chat_ref.get().to_dict()
+        if messages_doc:
+            return messages_doc.get('messages', [])
+        return []

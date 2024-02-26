@@ -2,8 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import User, Post, Comment, FriendShip, Group, Question, Survey, \
-    Invitation, Reaction, Image, Choice, SurveyResponse, QuestionResponse
+from .models import *
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -169,3 +168,12 @@ class ForgetPasswordSerializer(serializers.Serializer):
 
     class Meta:
         fields = '__all__'
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'content', 'created_at', 'is_read']
+
+

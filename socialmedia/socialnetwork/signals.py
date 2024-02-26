@@ -4,7 +4,7 @@ from django.dispatch import receiver
 import pdb
 from django.conf import settings
 
-from .models import User, Invitation
+from .models import User, Invitation, FriendShip, Notification
 
 
 @receiver(post_save, sender=User)
@@ -41,6 +41,12 @@ def send_email_invitation(sender, instance, created, **kwargs):
         send_mail(subject, message, from_email, recipient_list, fail_silently)
 
 
+@receiver(post_save, sender=Invitation)
+def invitation_notification(sender, instance, created, **kwargs):
+    if created:
+        Notification.create_invitation_notification(instance)
+
+
 @receiver(post_save, sender=User)
 def send_mail_confirmation(sender, instance, **kwargs):
     if instance.role == instance.Role.ALUMNI and instance.is_active and instance.password_changed:
@@ -48,3 +54,11 @@ def send_mail_confirmation(sender, instance, **kwargs):
         message = f'Chào bạn {instance.get_full_name()} \n\nTài khoản bạn đã được xác nhận.'
         from_email = settings.EMAIL_HOST_USER
         instance.email_user(subject, message, from_email)
+
+
+@receiver(post_save, sender=FriendShip)
+def friend_request_notification(sender, instance, created, **kwargs):
+    if created:
+        Notification.create_friend_request_notification(instance.sender, instance.receiver)
+
+

@@ -153,3 +153,37 @@ class Reaction(Interaction):
 
     class Meta:
         unique_together = ('user', 'post')
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.content}"
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @classmethod
+    def create_friend_request_notification(cls, sender, receiver):
+        content = f"You have a friend request from {sender.first_name}."
+        cls.objects.create(user=receiver, content=content)
+
+    @classmethod
+    def create_invitation_notification(cls, invitation):
+        for user in invitation.recipients_users.all():
+            content = f"You have an invitation: {invitation.title}"
+            cls.objects.create(user=user, content=content)
+
+        for group in invitation.recipients_groups.all():
+            for user in group.members.all():
+                content = f"You have an invitation from {invitation.sender.username}: {invitation.title}"
+                cls.objects.create(user=user, content=content)
+
+    @classmethod
+    def mark_as_read(cls, notification_ids):
+        cls.objects.filter(pk__in=notification_ids).update(is_read=True)
+
