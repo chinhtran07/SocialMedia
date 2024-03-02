@@ -62,3 +62,4 @@ def friend_request_notification(sender, instance, created, **kwargs):
         Notification.create_friend_request_notification(instance.sender, instance.receiver)
 
 
+

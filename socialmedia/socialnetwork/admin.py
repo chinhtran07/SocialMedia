@@ -123,10 +123,10 @@ class InvitationAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'title', 'time', 'place']
 
 
-admin_site.register(User, UserAdmin)
-admin_site.register(AlumniProfile, AlumniAdmin)
-admin_site.register(Post, PostAdmin)
-admin_site.register(Survey, SurveyAdmin)
-admin_site.register(Question, QuestionAdmin)
-admin_site.register(Invitation, InvitationAdmin)
-admin_site.register(Group, GroupAdmin)
+admin.site.register(User, UserAdmin)
+admin.site.register(AlumniProfile, AlumniAdmin)
+admin.site.register(Post, PostAdmin)
+admin.site.register(Survey, SurveyAdmin)
+admin.site.register(Question, QuestionAdmin)
+admin.site.register(Invitation, InvitationAdmin)
+admin.site.register(Group, GroupAdmin)

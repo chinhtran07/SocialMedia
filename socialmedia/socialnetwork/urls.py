@@ -17,4 +17,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('login/', views.LoginView.as_view(), name='login'),
     path('register/', views.RegisterView.as_view(), name='register'),
+    path('accounts/google/login/callback', views.google_callback, name="google_callback")
 ]

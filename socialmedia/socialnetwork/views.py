@@ -4,6 +4,7 @@ import json
 import pdb
 from itertools import chain
 
+from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.http import HttpResponse
@@ -16,9 +17,45 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 import firebase_admin
 from firebase_admin import firestore
+from django.db.models import Q
 
 from . import serializers, perms, paginators, mixins, dao
 from .models import *
+
+
+# views.py
+from django.shortcuts import redirect
+import requests
+
+
+def google_callback(request):
+    code = request.query_params.get("code")
+    if code:
+        client_id = 'YOUR_CLIENT_ID'
+        client_secret = 'YOUR_CLIENT_SECRET'
+        redirect_uri = 'YOUR_REDIRECT_URI'
+
+        token_response = requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': code,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'redirect_uri': redirect_uri,
+                'grant_type': 'authorization_code'
+            }
+        )
+
+        if token_response.status_code == 200:
+            access_token = token_response.json().get('access_token')
+            # You have obtained the access token, you can use it as needed.
+            return Response(access_token, status=status.HTTP_200_OK)
+        else:
+            # Handle error
+            return redirect('/error')
+    else:
+        # Handle missing code parameter error
+        return redirect('/error')
 
 
 class LoginView(TokenView):
@@ -164,13 +201,17 @@ class UserViewSet(viewsets.ViewSet,
 
     @action(methods=['GET'], detail=False, url_path='list_friends')
     def list_friends(self, request):
-        sender = request.user.friendship_requests_sent.filter(is_accepted=True).all()
-        receiver = request.user.friendship_requests_received.filter(is_accepted=True).all()
+        friendships = FriendShip.objects.filter(is_accepted=True).filter(
+            Q(sender=request.user) | Q(receiver=request.user))
+        friend_list = []
 
-        friends = list(chain(sender, receiver), request)
+        for friendship in friendships:
+            if friendship.sender == request.user:
+                friend_list.append(friendship.receiver)
+            else:
+                friend_list.append(friendship.sender)
 
-        return Response(serializers.FriendShipSerializer(friends, many=True, context={'request': request}).data,
-                        status=status.HTTP_200_OK)
+        return Response(serializers.UserInteractionSerializer(friend_list, many=True).data, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False)
     def forget_password(self, request):
